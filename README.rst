@@ -19,9 +19,11 @@ computer the up 192.168.1.2.
 If you've not changed anything you can go right ahead and instanciate 
 the Drone without any parameters:
 
+    >>> from ardroneapi import Drone
+    >>> from ardroneapi.constants import ARDRONE_LED_ANIMATION_DOUBLE_MISSILE
     >>> d = Drone()
     >>> d.connect() # initiates the socket
-    >>> d.animate_leds(13) # makes the leds blink.
+    >>> d.animate_leds(ARDRONE_LED_ANIMATION_DOUBLE_MISSILE) # makes the leds blink.
     >>> d.flat_trims() # calibrate drone (make sure it is on a flat horizontal surface first)
     >>> d.takeoff()
     >>> d.land()

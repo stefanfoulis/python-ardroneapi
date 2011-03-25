@@ -1,6 +1,7 @@
 import socket
 import struct
 
+
 class Drone(object):
     """
     Preperation:
