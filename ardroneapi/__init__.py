@@ -29,7 +29,6 @@ class Drone(object):
         self.local_port = local_port or 5556
         
         self.socket = None
-        self.navdata = []
     
     @property
     def sequence(self):
@@ -78,16 +77,7 @@ class Drone(object):
     def connect(self):
         self.socket = socket.socket( socket.AF_INET, socket.SOCK_DGRAM )
         self.socket.bind( (self.local_ip, self.local_port))
-        self.socket.connect( (self.ip, self.port) )
-    
-    def record_navdata(self):
-        self.navsocket = socket.socket( socket.AF_INET, socket.SOCK_DGRAM)
-        self.navsocket.bind( (self.local_ip, 5554) )
-        self.navsocket.connect( (self.ip, 5554) )
-        self.navsocket.send('WHATEVER\r')
-        while True:
-            data, addr = self.navsocket.recvfrom( 1024 )
-            print data
+        self.socket.connect( (self.drone_ip, self.drone_port) )
     
     def disconnect(self):
         self.socket.close()
