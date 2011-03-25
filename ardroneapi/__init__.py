@@ -245,6 +245,35 @@ class Drone(object):
     
     def reset_communications_watchdog(self):
         self.send('COMWDG')
+    
+    def get_config(self):
+        self.configsocket = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
+        self.confgisocket.bind( (self.local_ip, 5559) )
+        self.configsocket.connect( (self.drone_ip, 5559) )
+        self.configsocket.send('AT')
+        while True:
+            data, addr = self.configsocket.recvfrom( 1024 )
+            print data
+    
+    def get_navdata(self):
+        self.navsocket = socket.socket( socket.AF_INET, socket.SOCK_DGRAM)
+        self.navsocket.bind( (self.local_ip, 5554) )
+        self.navsocket.connect( (self.drone_ip, 5554) )
+        self.navsocket.send('WHATEVER\r')
+        while True:
+            data, addr = self.navsocket.recvfrom( 1024 )
+            print data
+    
+    def get_video(self):
+        self.videosocket = socket.socket( socket.AF_INET, socket.SOCK_DGRAM)
+        self.videosocket.bind( (self.local_ip, 5555))
+#        self.videosocket.connect( (self.drone_ip, 5555) )
+#        self.videosocket.send('A\r')
+        while True:
+            self.reset_communications_watchdog() # to keep the connection alive
+            data, addr = self.videosocket.recvfrom( 1024 )
+            print data
+            print addr
 
 def float2int(f):
     """
