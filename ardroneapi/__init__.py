@@ -240,6 +240,16 @@ class Drone(object):
         Plays an animation, ie. a predetermined sequence of movements.
         Most of these movements are small movements (shaking for example)
         superposed to the user commands.
+        
+        0: ARDRONE_ANIMATION_PHI_M30_DEG,
+        1: ARDRONE_ANIMATION_PHI_30_DEG,
+        2: ARDRONE_ANIMATION_THETA_M30_DEG,
+        3: ARDRONE_ANIMATION_THETA_30_DEG,
+        4: ARDRONE_ANIMATION_THETA_20DEG_YAW_200DEG,
+        5: ARDRONE_ANIMATION_THETA_20DEG_YAW_M200DEG,
+        6: ARDRONE_ANIMATION_TURNAROUND,
+        7: ARDRONE_ANIMATION_TURNAROUND_GODOWN,
+        8: ARDRONE_ANIMATION_YAW_SHAKE,
         """
         self.send('ANIM', (animation, duration,))
     
