@@ -16,7 +16,7 @@ class Drone(object):
     >>> d = Drone()
     >>> d.connect() # initiates the socket
     >>> d.animate_leds(13) # makes the leds blink.
-    >>> d.flat_trims() # calibrate drone (make sure it is on a flat horizontal surface)
+    >>> d.flat_trims() # INPORTANT!: calibrate drone (make sure it is on a flat horizontal surface)
     >>> d.takeoff()
     >>> d.land()
     
@@ -31,7 +31,6 @@ class Drone(object):
         
         self.socket = None
     
-    @property
     def sequence(self):
         self._sequence += 1
         return self._sequence
@@ -56,7 +55,7 @@ class Drone(object):
                 params2.append(str(float2int(param)))
             else:
                 params2.append(str(param))
-        params_str = ','.join([str(self.sequence)] + params2)
+        params_str = ','.join([str(self.sequence())] + params2)
         return 'AT*' + method + '=' + params_str + '\r'
     
     def build_raw_commands(self, commands):
@@ -93,15 +92,15 @@ class Drone(object):
         If no other command is supplied, the drone enters a hovering mode and
         stays still at approximately 1 meter above ground.
         """
-        #self.send('REF', '290718208')
-        self.send('REF', '512')
+        #self.send('REF', ('290718208',))
+        self.send('REF', ('512',))
     
     def land(self):
         """
         The drone lands and turns off its motors.
         """
-        #self.send('REF', '290717696')
-        self.send('REF', '0')
+        #self.send('REF', ('290717696',))
+        self.send('REF', ('0',))
     
     def emergency(self):
         """
@@ -112,7 +111,7 @@ class Drone(object):
         Takeoff (bit 9)  : 0
         
         """
-        self.send('REF', '256')
+        self.send('REF', ('256',))
     
     def recover(self):
         """
@@ -121,7 +120,7 @@ class Drone(object):
         Emergency (bit 8): 0
         Takeoff (bit 9)  : 0
         """
-        self.send('REF', '0')
+        self.send('REF', ('0',))
     
     def hover(self):
         """
