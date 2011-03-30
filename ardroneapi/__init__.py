@@ -8,10 +8,10 @@ class Drone(object):
         You must be connected to the ad-hoc network of the AR.Drone. Check if
         the drone can be pinged and if you can connect to it via telnet.
         By default the drone will be at 192.168.1.1 and will assign your
-        computer the up 192.168.1.2.
+        computer the ip 192.168.1.2.
     
-    If you've not changed anything you can go right ahead and instanciate 
-    the Drone without any parameters:
+    If you've not changed anything you can go right ahead and create an instance 
+    of ``Drone`` without any parameters:
     
     >>> d = Drone()
     >>> d.connect() # initiates the socket
@@ -41,6 +41,8 @@ class Drone(object):
         '''
         if not self.socket:
             raise Exception("Not connected yet!")
+        print "sending..."
+        print data
         self.socket.send(data)
     
     def build_raw_command(self, method, params=None):
@@ -111,7 +113,7 @@ class Drone(object):
         Takeoff (bit 9)  : 0
         
         """
-        self.send('REF', ('256',))
+        self.send_many([('REF', ('0',)),('REF', ('256',)),('REF', ('0',))])
     
     def recover(self):
         """
@@ -246,34 +248,90 @@ class Drone(object):
     def reset_communications_watchdog(self):
         self.send('COMWDG')
     
+    def set_config(self, name, value):
+        """
+        name: the name of the value to set
+        value: the value of the configuration
+        """
+        self.send('CONFIG', ('"%s"' % name, '"%s"' % value,))
+    
+    def connect_and_listen_for_config(self):
+        """
+        config data is sent via TCP
+        """
+        s = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
+        #s.bind( (self.local_ip, 5559,) )
+        s.connect( (self.drone_ip, 5559,) )
+        s.send('USER anonymous')
+        
+        while 1:
+            data, address = s.recvfrom( 1024 )
+            print data
+            print address
+            print '======'
+            if not data:
+                break
+    
     def get_config(self):
-        self.configsocket = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
-        self.confgisocket.bind( (self.local_ip, 5559) )
-        self.configsocket.connect( (self.drone_ip, 5559) )
-        self.configsocket.send('AT')
-        while True:
-            data, addr = self.configsocket.recvfrom( 1024 )
-            print data
+        NO_CONTROL_MODE = 0
+        ARDRONE_UPDATE_CONTROL_MODE = 1
+        PIC_UPDATE_CONTROL_MODE = 2
+        LOGS_GET_CONTROL_MODE = 3
+        CFG_GET_CONTROL_MODE = 4
+        ACK_CONTROL_MODE = 5
+        
+        self.send('CTRL', (ACK_CONTROL_MODE,))
+        self.send('CTRL', (CFG_GET_CONTROL_MODE,))
     
-    def get_navdata(self):
-        self.navsocket = socket.socket( socket.AF_INET, socket.SOCK_DGRAM)
-        self.navsocket.bind( (self.local_ip, 5554) )
-        self.navsocket.connect( (self.drone_ip, 5554) )
-        self.navsocket.send('WHATEVER\r')
-        while True:
-            data, addr = self.navsocket.recvfrom( 1024 )
-            print data
     
-    def get_video(self):
-        self.videosocket = socket.socket( socket.AF_INET, socket.SOCK_DGRAM)
-        self.videosocket.bind( (self.local_ip, 5555))
-#        self.videosocket.connect( (self.drone_ip, 5555) )
-#        self.videosocket.send('A\r')
+    def listen_for_navdata(self):
+        '''
+        The Navdata is sent as broadcast
+        '''
+        mcast_grp = '224.1.1.1'
+        mcast_port = 5554
+        s = socket.socket( socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP )
+        try:
+            s.setsockopt( socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        except AttributeError:
+            print "attr error in setsockopt"
+        s.setsockopt()
+        s.bind( (self.local_ip, mcast_port ) )
+        aton = socket.inet_aton(mcast_grp)
+        print aton
+        mreq = struct.pack("4s1", aton, socket.INADDR_ANY)
+        s.setsockopt( socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+        
         while True:
-            self.reset_communications_watchdog() # to keep the connection alive
-            data, addr = self.videosocket.recvfrom( 1024 )
-            print data
-            print addr
+            print s.recv(1024)
+    
+    def navdata_multicast(self):
+        receiver = multicast.MulticastUDPReceiver('en1', '224.1.1.1', 5554)
+        receiver.read()
+        receiver.close()
+    
+    def navdata_circuits(self):
+        UDPServer
+        
+#    def get_navdata(self):
+#        self.navsocket = socket.socket( socket.AF_INET, socket.SOCK_DGRAM)
+#        self.navsocket.bind( (self.local_ip, 5554) )
+#        self.navsocket.connect( (self.drone_ip, 5554) )
+#        self.navsocket.send('WHATEVER\r')
+#        while True:
+#            data, addr = self.navsocket.recvfrom( 1024 )
+#            print data
+#    
+#    def get_video(self):
+#        self.videosocket = socket.socket( socket.AF_INET, socket.SOCK_DGRAM)
+#        self.videosocket.bind( (self.local_ip, 5555))
+##        self.videosocket.connect( (self.drone_ip, 5555) )
+##        self.videosocket.send('A\r')
+#        while True:
+#            self.reset_communications_watchdog() # to keep the connection alive
+#            data, addr = self.videosocket.recvfrom( 1024 )
+#            print data
+#            print addr
 
 def float2int(f):
     """
