@@ -1,6 +1,6 @@
 import socket
 import struct
-
+import pprint
 
 class Drone(object):
     """
@@ -316,24 +316,10 @@ class Drone(object):
                         ('"%s"' % name, value,))
         )
     
-    def connect_and_listen_for_config(self):
+    def get_config(self):
         """
         config data is sent via TCP
         """
-        s = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
-        #s.bind( (self.local_ip, 5559,) )
-        s.connect( (self.drone_ip, 5559,) )
-        s.send('USER anonymous')
-        
-        while 1:
-            data, address = s.recvfrom( 1024 )
-            print data
-            print address
-            print '======'
-            if not data:
-                break
-    
-    def get_config(self):
         NO_CONTROL_MODE = 0
         ARDRONE_UPDATE_CONTROL_MODE = 1
         PIC_UPDATE_CONTROL_MODE = 2
@@ -341,8 +327,34 @@ class Drone(object):
         CFG_GET_CONTROL_MODE = 4
         ACK_CONTROL_MODE = 5
         
-        self.send('CTRL', (ACK_CONTROL_MODE,))
-        self.send('CTRL', (CFG_GET_CONTROL_MODE,))
+        s = socket.socket( socket.AF_INET, socket.SOCK_STREAM )
+        #s.bind( (self.local_ip, 5559,) )
+        s.connect( (self.drone_ip, self.cfg_port,) )
+        #s.send('USER anonymous')
+        #s.send(self.build_raw_command('CTRL', (4,)))
+        
+        # tell to send config via udp
+        self.send('CTRL', (CFG_GET_CONTROL_MODE,0,))
+        
+        config = []
+        while True:
+            data, address = s.recvfrom( 1024 )
+            print data
+            print address
+            print '======'
+            if not data:
+                break
+            config.append(data)
+        config = ''.join(config)
+        lines = config.split('\n')
+        cfg = {}
+        for line in lines:
+            if '=' in line:
+                key, value = line.split('=')
+                key = key.strip()
+                value = value.strip()
+                cfg[key] = value
+        pprint.pprint(cfg)
 
 def float2int(f):
     """
