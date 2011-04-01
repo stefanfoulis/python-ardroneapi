@@ -78,7 +78,11 @@ class Drone(object):
         #       prevent blocking
         while True:
             data, sender = s.recvfrom(100)
-            print (str(sender) + '   ' + repr(data))
+            print "<<<====="
+            print str(sender)
+            print repr(data)
+            n = NavigationData(data)
+            print "=====>>>"
         self.disconnect_nav()
     
     def disconnect_nav(self):
@@ -355,6 +359,140 @@ class Drone(object):
                 value = value.strip()
                 cfg[key] = value
         pprint.pprint(cfg)
+
+class NavigationData(object):
+    def __init__(self, raw_data):
+        self.raw_data = raw_data
+        self.unpack()
+    
+    def unpack_state(self, state):
+        '''
+        state is a bit field representing ARDrone' state
+        
+        Define masks for ARDrone state
+        31                                                             0
+         x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x x -> state
+         | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | |
+         | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | FLY MASK : (0) ardrone is landed, (1) ardrone is flying
+         | | | | | | | | | | | | | | | | | | | | | | | | | | | | | | VIDEO MASK : (0) video disable, (1) video enable
+         | | | | | | | | | | | | | | | | | | | | | | | | | | | | | VISION MASK : (0) vision disable, (1) vision enable
+         | | | | | | | | | | | | | | | | | | | | | | | | | | | | CONTROL ALGO : (0) euler angles control, (1) angular speed control
+         | | | | | | | | | | | | | | | | | | | | | | | | | | | ALTITUDE CONTROL ALGO : (0) altitude control inactive (1) altitude control active
+         | | | | | | | | | | | | | | | | | | | | | | | | | | USER feedback : Start button state
+         | | | | | | | | | | | | | | | | | | | | | | | | | Control command ACK : (0) None, (1) one received
+         | | | | | | | | | | | | | | | | | | | | | | | | Trim command ACK : (0) None, (1) one received
+         | | | | | | | | | | | | | | | | | | | | | | | Trim running : (0) none, (1) running
+         | | | | | | | | | | | | | | | | | | | | | | Trim result : (0) failed, (1) succeeded
+         | | | | | | | | | | | | | | | | | | | | | Navdata demo : (0) All navdata, (1) only navdata demo
+         | | | | | | | | | | | | | | | | | | | | Navdata bootstrap : (0) options sent in all or demo mode, (1) no navdata options sent
+         | | | | | | | | | | | | | | | | | | | | Motors status : (0) Ok, (1) Motors Com is down
+         | | | | | | | | | | | | | | | | | |
+         | | | | | | | | | | | | | | | | | Bit means that there's an hardware problem with gyrometers
+         | | | | | | | | | | | | | | | | VBat low : (1) too low, (0) Ok
+         | | | | | | | | | | | | | | | VBat high (US mad) : (1) too high, (0) Ok
+         | | | | | | | | | | | | | | Timer elapsed : (1) elapsed, (0) not elapsed
+         | | | | | | | | | | | | | Power : (0) Ok, (1) not enough to fly
+         | | | | | | | | | | | | Angles : (0) Ok, (1) out of range
+         | | | | | | | | | | | Wind : (0) Ok, (1) too much to fly
+         | | | | | | | | | | Ultrasonic sensor : (0) Ok, (1) deaf
+         | | | | | | | | | Cutout system detection : (0) Not detected, (1) detected
+         | | | | | | | | PIC Version number OK : (0) a bad version number, (1) version number is OK
+         | | | | | | | ATCodec thread ON : (0) thread OFF (1) thread ON
+         | | | | | | Navdata thread ON : (0) thread OFF (1) thread ON
+         | | | | | Video thread ON : (0) thread OFF (1) thread ON
+         | | | | Acquisition thread ON : (0) thread OFF (1) thread ON
+         | | | CTRL watchdog : (1) delay in control execution (> 5ms), (0) control is well scheduled // Check frequency of control loop
+         | | ADC Watchdog : (1) delay in uart2 dsr (> 5ms), (0) uart2 is good // Check frequency of uart2 dsr (com with adc)
+         | Communication Watchdog : (1) com problem, (0) Com is ok // Check if we have an active connection with a client
+         Emergency landing : (0) no emergency, (1) emergency
+        '''
+        
+        desc = {
+            0: ('flying', 'ardrone is landed', 'ardrone is flying'),
+            1: ('video', 'video disabled', 'video enabled'),
+            2: ('vision', 'vision disabled', 'vision enabled'),
+            10: ('navdata_demo', 'all navdata', 'only navdata demo'),
+            26: ('navdata', 'navdata thread is ON', 'navdata thread is OFF'),
+            31: ('emergency', 'no emergency', 'emergency'),
+        }
+        values = {}
+        bits = str(bin(state)).lstrip('-b0')
+        # reverse the bitmask
+        print bits
+        bits = bits[::-1]
+        print bits
+        for thebit in range(0,31):
+            try:
+                s = bits[thebit]
+                if s == '1':
+                    s = True
+                else:
+                    s = False
+                d = desc.get(thebit, None)
+                if not d is None:
+                    if s:
+                        print d[0], d[2]
+                    else:
+                        print d[0], d[1]
+            except IndexError:
+                pass
+    
+    
+    def unpack(self):
+        '''
+        Exact-width integer types
+        
+        Integer types having exactly the specified width
+        typedef signed char int8_t
+        typedef unsigned char uint8_t
+        typedef signed int int16_t
+        typedef unsigned int uint16_t
+        typedef signed long int int32_t
+        typedef unsigned long int uint32_t
+        typedef signed long long int int64_t
+        typedef unsigned long long int uint64_t
+        
+        
+        Header:
+        HEADER      State     Seq       Vision
+        uint32_t    uint32_t  uint32_t  bool_t
+        
+        
+        
+        Checksum:
+        TAG        SIZE        CKS
+        uint16_t   uint16_t    uint32_t
+        
+        
+        
+        '''
+        r = self.raw_data
+        header = r[:13]
+        checksum = r[-12:]
+        options = r[13:-12]
+        print 'length: %s (header: %s, options: %s, checksum: %s)' % (len(r), 
+                                                                      len(header), 
+                                                                      len(options),
+                                                                      len(checksum),)
+        print 'correct?: ', len(r), '==', len(header)+len(options)+len(checksum)
+        
+        h, state, seq, vision = struct.unpack('<LLL?', header)
+        print 'header: %s %s %s %s' % (hex(h), bin(state), seq, vision)
+        self.unpack_state(state)
+        cks_id, size, chks_data = struct.unpack('<IIL', checksum)
+        print 'checksum: %s %s %s' % (cks_id, size, chks_data)
+        has_more = True
+        o = options[:]
+        while has_more:
+            tag, size = struct.unpack('<II', o[:8])
+            size_bytes = size/8
+            rest = o[4:size_bytes]
+            print tag, size, repr(rest)
+            o = o[4+size_bytes:]
+            if not len(o):
+                has_more = False
+#        opt1, s1 = struct.unpack('<hh', options[:4])
+#        print 'id: %s size: %s' % (opt1, s1)
 
 def float2int(f):
     """
